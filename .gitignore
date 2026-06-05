@@ -1,0 +1,15 @@
+# Nix
+result
+result-*
+
+# direnv
+.direnv/
+
+# Editor swap/backup files
+*.swp
+*.swo
+*~
+
+# Secrets: never commit decrypted age keys
+*.agekey
+keys.txt

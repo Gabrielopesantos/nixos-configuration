@@ -3,16 +3,15 @@
 # This file only exists so the flake evaluates before casper is installed.
 # On the target machine, regenerate it for real:
 #
-#   # while booted in the NixOS installer, after mounting your root at /mnt:
-#   sudo nixos-generate-config --root /mnt
+#   # in the NixOS installer, after `disko ... --mode ...,mount /mnt`:
+#   sudo nixos-generate-config --no-filesystems --root /mnt
 #   # then copy /mnt/etc/nixos/hardware-configuration.nix over this file.
 #
-# (Bootloader config lives in ./default.nix, not here.)
-{
-  config,
-  lib,
-  ...
-}:
+# --no-filesystems is important: disko (hosts/casper/disko.nix) owns the
+# `fileSystems.*` entries, so they must NOT be duplicated here.
+# Bootloader config lives in ./default.nix; AMD microcode is handled by the
+# nixos-hardware common-cpu-amd module imported in ./default.nix.
+{ ... }:
 {
   boot.initrd.availableKernelModules = [
     "nvme"
@@ -24,18 +23,7 @@
   ];
   boot.kernelModules = [ "kvm-amd" ];
 
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "ext4";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/BOOT";
-    fsType = "vfat";
-  };
-
   swapDevices = [ ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
-  hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 }

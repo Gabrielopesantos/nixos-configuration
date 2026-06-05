@@ -1,0 +1,14 @@
+# sops-nix recipients + creation rules. Fill in the real keys at bootstrap
+# (see profiles/secrets.nix). Anyone listed here can decrypt the matching files.
+#
+# gabriel = YubiKey GPG key (PGP fingerprint):  gpg --card-status  /  gpg -K
+# casper  = host SSH key as age:  nix run nixpkgs#ssh-to-age -- < /etc/ssh/ssh_host_ed25519_key.pub
+creation_rules:
+  - path_regex: secrets/secrets\.yaml$
+    key_groups:
+      # Personal editor identity (hardware-backed). Replace with your fingerprint.
+      - pgp:
+          - 0000000000000000000000000000000000000000 # TODO: YubiKey GPG fingerprint
+        # casper's unattended machine identity. Replace after first boot.
+        age:
+          - age1PLACEHOLDER_casper_host_key_replace_me

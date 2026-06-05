@@ -52,7 +52,10 @@
   users.users.gabriel = {
     isNormalUser = true;
     description = "Gabriel Santos";
-    # Set a real password with `passwd` after first boot, or use hashedPassword.
+    # Bootstrap password for the first boot. After sops-nix is wired
+    # (see profiles/secrets.nix), replace this with:
+    #   hashedPasswordFile = config.sops.secrets.gabriel-password.path;
+    # and delete initialPassword.
     initialPassword = "changeme";
     extraGroups = [
       "wheel"

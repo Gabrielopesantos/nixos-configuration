@@ -35,6 +35,11 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Enable hardware graphics acceleration.
+  hardware.graphics.enable = true;
+
+  services.pcscd.enable = true;
+
   # Do not change after install - see
   # https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion
   system.stateVersion = "25.11";

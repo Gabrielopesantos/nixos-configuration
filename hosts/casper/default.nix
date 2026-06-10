@@ -40,6 +40,14 @@
 
   services.pcscd.enable = true;
 
+  virtualisation.podman = {
+    enable = true;
+    # creates a docker symlink pointing at podman, plus a docker-compose shim path
+    dockerCompat = true;
+    # turns on DNS resolution between containers on the default network
+    defaultNetwork.settings.dns_enabled = true;
+  };
+
   # Do not change after install - see
   # https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion
   system.stateVersion = "25.11";

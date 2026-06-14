@@ -20,9 +20,11 @@
     # Installs the `nvidia-settings` control panel.
     nvidiaSettings = true;
 
-    # Desktop with reliable power - leave off. Flip to true only if you see
-    # corruption/black screens after suspend/resume.
-    powerManagement.enable = false;
+    # VRAM preservation across suspend/resume. Required on this Wayland + dGPU
+    # setup, otherwise kwin_wayland loses its GPU buffers on resume and crashes.
+    # Enables NVreg_PreserveVideoMemoryAllocations=1 and the
+    # nvidia-{suspend,resume,hibernate} systemd services.
+    powerManagement.enable = true;
 
     # Production/stable driver branch. Could pin to .beta or .production.
     package = config.boot.kernelPackages.nvidiaPackages.stable;

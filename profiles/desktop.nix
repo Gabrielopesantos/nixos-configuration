@@ -10,8 +10,8 @@
 
   # Keyboard layout (used by Plasma and the console).
   services.xserver.xkb = {
-    layout = "us";
-    variant = "";
+    layout = "us,pt";
+    variant = ",";
   };
 
   # Desktop networking.
@@ -32,6 +32,7 @@
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
   fonts.packages = with pkgs; [
+    inter
     noto-fonts
     noto-fonts-cjk-sans
     noto-fonts-cjk-serif

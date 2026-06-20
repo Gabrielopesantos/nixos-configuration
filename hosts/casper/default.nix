@@ -40,6 +40,16 @@
 
   services.pcscd.enable = true;
 
+  virtualisation.containers.registries.search = [
+    "docker.io"
+    "quay.io"
+    "ghcr.io"
+  ];
+
+  environment.etc."containers/registries.conf.d/short-name-mode.conf".text = ''
+    short-name-mode = "permissive"
+  '';
+
   virtualisation.podman = {
     enable = true;
     # creates a docker symlink pointing at podman, plus a docker-compose shim path

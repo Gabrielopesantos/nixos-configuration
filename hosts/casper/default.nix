@@ -33,6 +33,7 @@
 
   # Bootloader. nixos-generate-config does NOT manage this, so it lives here.
   boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot.configurationLimit = 5;
   boot.loader.efi.canTouchEfiVariables = true;
 
   # Enable hardware graphics acceleration.

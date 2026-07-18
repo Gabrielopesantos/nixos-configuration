@@ -12,12 +12,17 @@ hosts/
     disko.nix                   # declarative disk layout (install-time)
     hardware-configuration.nix  # PLACEHOLDER - regenerate on the machine
 profiles/
-  common.nix                    # base: nix settings, gc, locale, user gabriel, ssh, fonts
-  desktop.nix                   # KDE Plasma 6 / Wayland, PipeWire, NetworkManager
+  common.nix                    # base: nix settings, gc, locale, keyboard, user gabriel, ssh
+  tailscale.nix                 # tailnet membership, on by default (imported by common.nix)
+  desktop.nix                   # meta-profile composing the granular desktop profiles below
+  graphical/plasma.nix          # KDE Plasma 6 / Wayland, SDDM
+  graphical/fonts.nix           # desktop font set
+  audio/pipewire.nix            # PipeWire audio
+  networking/networkmanager.nix # NetworkManager (desktops/laptops)
   nvidia.nix                    # NVIDIA proprietary driver, Wayland-tuned
   secrets.nix                   # sops-nix scaffold (inert until bootstrapped)
   server.nix                    # headless profile for future cloud/dev hosts
-modules/nixos/                  # reusable modules (exported via flake)
+modules/nixos/                  # reusable modules (reverse-proxy; exported via flake)
 overlays/                       # custom pkgs + `pkgs.unstablePkgs` from nixpkgs-unstable
 pkgs/                           # custom package definitions
 .sops.yaml                      # secrets recipients + creation rules
@@ -100,6 +105,66 @@ nix flake update                             # bump all inputs
 nix flake check                              # evaluate everything
 nix fmt                                      # format (nixfmt-rfc-style)
 ```
+
+## Adding a machine
+
+### Laptop
+
+1. Create `hosts/<name>/` with `default.nix`, `disko.nix`, and a placeholder
+   `hardware-configuration.nix`, following `hosts/casper/`. Set
+   `hostCategory = "desktop"` and register the host in `nixosConfigurations`.
+2. Import `profiles/common.nix` + `profiles/secrets.nix`. For the desktop,
+   either import `profiles/desktop.nix` (Plasma) or compose the granular
+   profiles directly if you want a different environment:
+   `profiles/graphical/*`, `profiles/audio/pipewire.nix`,
+   `profiles/networking/networkmanager.nix`.
+3. Only once the hardware is known: add a GPU profile (an AMD or Intel
+   sibling of `profiles/nvidia.nix`) and a `profiles/laptop.nix` for power
+   management, touchpad, and bluetooth.
+
+### Hetzner VPS
+
+1. Create `hosts/<name>/` importing `profiles/common.nix`,
+   `profiles/secrets.nix`, and `profiles/server.nix`. Set
+   `hostCategory = "server"`. No graphical/audio profiles.
+2. Tailscale is already on by default (via `profiles/tailscale.nix`). With a
+   `tailscale-auth-key` secret in sops, enrollment is unattended; otherwise
+   run `sudo tailscale up` once. Then `ssh gabriel@<name>` works from any
+   tailnet machine via MagicDNS.
+3. Provision from your desktop with nixos-anywhere + disko against the rescue
+   system. Later changes deploy over SSH:
+   `nixos-rebuild switch --flake .#<name> --target-host gabriel@<name>`
+   (or adopt colmena once there are several servers).
+4. Serve content with the reverse-proxy module (nginx + ACME):
+
+   ```nix
+   imports = [ outputs.nixosModules.reverse-proxy ];
+
+   services.reverseProxy = {
+     enable = true;
+     domain = "example.com";
+     acmeEmail = "admin@example.com";
+     apps.myapp = {
+       subdomain = "app"; # -> app.example.com, proxied to 127.0.0.1:3000
+       port = 3000;
+       websockets = true; # optional
+     };
+   };
+   ```
+
+   DNS for each `<subdomain>.<domain>` must point at the host; ports 80/443
+   are opened automatically for ACME HTTP-01.
+
+### Secrets per host
+
+Each machine decrypts only its own secrets, using its own SSH host key:
+
+1. Derive the new host's age recipient:
+   `ssh gabriel@<name> 'cat /etc/ssh/ssh_host_ed25519_key.pub' | nix run nixpkgs#ssh-to-age`
+2. Add it as a recipient in `.sops.yaml`, then create `secrets/<name>.yaml`
+   encrypted to that recipient + your GPG key.
+3. In the host's config: `sops.defaultSopsFile = ../../secrets/<name>.yaml;`
+   and declare the secrets it needs.
 
 ## TODO before/after install
 

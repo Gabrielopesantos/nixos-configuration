@@ -105,6 +105,5 @@ nix fmt                                      # format (nixfmt-rfc-style)
 
 - [ ] Confirm the disk `device` in `hosts/casper/disko.nix` (use `by-id`).
 - [ ] Replace `hosts/casper/hardware-configuration.nix` with the generated one.
-- [ ] Add SSH public key(s) in `profiles/common.nix`.
 - [ ] Bootstrap sops (above), then move `gabriel`'s password off `initialPassword`.
 - [ ] Confirm timezone (`Europe/Lisbon`) and keyboard layout (`us`).

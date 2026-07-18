@@ -6,6 +6,8 @@
   ...
 }:
 {
+  imports = [ ./tailscale.nix ];
+
   # Machine type, set by each host. Shared modules can gate behavior on it
   # with `lib.mkIf (config.hostCategory == "server")`.
   options.hostCategory = lib.mkOption {

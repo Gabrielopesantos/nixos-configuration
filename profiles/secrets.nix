@@ -31,4 +31,9 @@
   # sops.secrets.gabriel-password = {
   #   neededForUsers = true; # decrypted early enough to set a login password
   # };
+  #
+  # Reusable auth key from the Tailscale admin console, for unattended
+  # enrollment of new machines (picked up automatically by
+  # profiles/tailscale.nix):
+  # sops.secrets.tailscale-auth-key = { };
 }

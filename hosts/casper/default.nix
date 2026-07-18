@@ -30,6 +30,7 @@
   ];
 
   networking.hostName = "casper";
+  hostCategory = "desktop";
 
   # Bootloader. nixos-generate-config does NOT manage this, so it lives here.
   boot.loader.systemd-boot.enable = true;

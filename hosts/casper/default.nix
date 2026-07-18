@@ -59,6 +59,15 @@
     defaultNetwork.settings.dns_enabled = true;
   };
 
+  # run unpatched dynamically linked binaries (e.g. AppImages or
+  # third-party binaries downloaded from the internet) by providing a standard
+  # dynamic linker and a set of common libraries.
+  programs.nix-ld.enable = true;
+
+  # KDE Connect: integrate any device with desktop.
+  # Also opens firewall ports 1714-1764/TCP+UDP for device pairing.
+  programs.kdeconnect.enable = true;
+
   # Do not change after install - see
   # https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion
   system.stateVersion = "25.11";

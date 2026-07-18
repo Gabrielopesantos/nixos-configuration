@@ -97,6 +97,13 @@
         #   specialArgs = { inherit inputs outputs; };
         #   modules = [ ./hosts/cloud-dev ];
         # };
+
+        atlas = nixpkgs.lib.nixosSystem {
+          specialArgs = { inherit inputs outputs; };
+          modules = [
+            ./hosts/atlas
+          ];
+        };
       };
     };
 }

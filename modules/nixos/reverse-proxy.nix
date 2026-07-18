@@ -12,13 +12,20 @@
 #     acmeEmail = "admin@example.com";
 #     apps.myapp = {
 #       subdomain = "app";        # -> app.example.com
-#       port = 3000;              # process listening on 127.0.0.1:3000
+#       address = "127.0.0.1";    # optional, default 127.0.0.1
+#       port = 3000;              # process listening on address:port
 #       websockets = true;        # optional, default false
 #     };
 #   };
 #
 # DNS for each <subdomain>.<domain> must point at the host, and ports 80/443
 # must be reachable for ACME HTTP-01 validation.
+#
+# Security note: the app process must bind to `address` only, not the wildcard
+# address. For OCI containers (Docker/Podman), publish the port as
+# "127.0.0.1:3000:3000" rather than "3000:3000", because container runtimes
+# can insert iptables rules that bypass the NixOS firewall.
+
 { config, lib, ... }:
 let
   cfg = config.services.reverseProxy;
@@ -31,9 +38,16 @@ let
         example = "app";
       };
 
+      address = lib.mkOption {
+        type = lib.types.str;
+        default = "127.0.0.1";
+        description = "Address the app process listens on. Use 127.0.0.1 (the default) for loopback-only apps; set to a container/network IP if the app is not running directly on the host.";
+        example = "127.0.0.1";
+      };
+
       port = lib.mkOption {
         type = lib.types.port;
-        description = "Localhost port the app process listens on.";
+        description = "Port on `address` the app process listens on.";
         example = 3000;
       };
 
@@ -82,7 +96,7 @@ in
           forceSSL = true;
           enableACME = true;
           locations."/" = {
-            proxyPass = "http://127.0.0.1:${toString app.port}";
+            proxyPass = "http://${app.address}:${toString app.port}";
             proxyWebsockets = app.websockets;
           };
         }
@@ -98,5 +112,17 @@ in
       80 # ACME HTTP-01 + redirect to HTTPS
       443
     ];
+
+    warnings = lib.optionals cfg.enable (
+      let
+        exposed = lib.filter (
+          name: lib.elem cfg.apps.${name}.port config.networking.firewall.allowedTCPPorts
+        ) (lib.attrNames cfg.apps);
+      in
+      lib.map (
+        name:
+        "reverseProxy apps.${name} port ${toString cfg.apps.${name}.port} is also opened in the firewall; the app should be reachable only via the reverse proxy"
+      ) exposed
+    );
   };
 }

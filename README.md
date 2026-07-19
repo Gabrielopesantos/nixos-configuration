@@ -20,11 +20,12 @@ profiles/
   audio/pipewire.nix            # PipeWire audio
   networking/networkmanager.nix # NetworkManager (desktops/laptops)
   nvidia.nix                    # NVIDIA proprietary driver, Wayland-tuned
-  secrets.nix                   # sops-nix scaffold (inert until bootstrapped)
+  secrets.nix                   # sops-nix wiring (store: secrets/secrets.yaml)
   server.nix                    # headless profile for future cloud/dev hosts
 modules/nixos/                  # reusable modules (reverse-proxy; exported via flake)
 overlays/                       # custom pkgs + `pkgs.unstablePkgs` from nixpkgs-unstable
 pkgs/                           # custom package definitions
+secrets/secrets.yaml            # encrypted secret store (safe to commit)
 .sops.yaml                      # secrets recipients + creation rules
 ```
 
@@ -39,7 +40,7 @@ standalone (`home-manager switch`); it is not wired into this flake.
 - `nixpkgs` stable `nixos-25.11`; `nixpkgs-unstable` exposed as `pkgs.unstablePkgs`.
 - `hardware` (nixos-hardware) - casper pulls `common-cpu-amd` + `common-pc-ssd`.
 - `disko` - declarative partitioning, used at install.
-- `sops-nix` - secrets, host-SSH-key backed (scaffolded, see [`docs/setup.md`](docs/setup.md)).
+- `sops-nix` - secrets, host-SSH-key backed (see [`docs/setup.md`](docs/setup.md)).
 
 ## Commands
 

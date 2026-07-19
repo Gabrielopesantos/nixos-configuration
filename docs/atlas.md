@@ -46,12 +46,12 @@ the legacy `kexec_load` syscall instead. Without it the install fails with
 
 ## Post-install
 
-1. Add atlas to the tailnet:
-   ```sh
-   ssh -t gabriel@<ATLAS_IP> sudo tailscale up
-   ```
-2. Optional: bootstrap per-host secrets by adding atlas's SSH age key to
-   `.sops.yaml` (see `docs/setup.md` for the workflow).
+1. Make the host a sops recipient (see "Secrets for a new host" in
+   `docs/setup.md`): add its SSH age key to `.sops.yaml`, `sops updatekeys`,
+   deploy. With the `tailscale-auth-key` secret it joins the tailnet
+   unattended — no manual `tailscale up`.
+2. In the Tailscale admin console: Machines → atlas → Disable key expiry
+   (otherwise the node drops off the tailnet after ~180 days).
 
 ## Day-to-day commands
 
@@ -60,7 +60,8 @@ the legacy `kexec_load` syscall instead. Without it the install fails with
 nix build .#nixosConfigurations.atlas.config.system.build.toplevel
 
 # Deploy once the host is on the tailnet (MagicDNS name: atlas)
-nixos-rebuild switch --flake .#atlas --target-host gabriel@atlas
+nixos-rebuild switch --flake .#atlas --target-host gabriel@atlas \
+  --use-remote-sudo --ask-sudo-password
 ```
 
 ## Useful checks
@@ -76,6 +77,28 @@ ss -tlnp | grep -E '80|443'
 The configured subdomain is an A record pointing at `<ATLAS_IP>`. It should be kept
 DNS-only (grey cloud) in Cloudflare so nginx can obtain and serve its own Let's Encrypt
 certificate via ACME HTTP-01.
+
+## Homepage (tailnet-only)
+
+`homepage-dashboard` is deliberately *not* behind the public reverse proxy.
+It binds loopback only (`HOSTNAME=127.0.0.1`, port 8082) and is published to
+the tailnet by the `tailscale-serve-homepage` unit:
+
+- Address: **`https://atlas.tailcadc07.ts.net`** — from any tailnet device.
+- `tailscale serve` terminates TLS inside tailscaled with an automatic
+  Let's Encrypt certificate for the ts.net name, then proxies to
+  `127.0.0.1:8082`. Requires MagicDNS + HTTPS certificates enabled on the
+  tailnet.
+- Bare `https://atlas` cannot work: public CAs don't issue certificates for a
+  bare hostname, so the TLS handshake has nothing valid to present. Use the
+  FQDN (or add a plain-HTTP `--http=80` serve if `http://atlas` is ever
+  wanted; tailnet traffic is WireGuard-encrypted either way).
+- Testing from atlas itself always hits nginx instead — serve interception
+  only applies to connections from *other* tailnet nodes. Verify from casper.
+
+The unit is ordered after `tailscaled-autoconnect.service`; serve commands
+fail while the node is logged out, and autoconnect is what completes the
+auth-key login on first boot.
 
 ## Reverse proxy security note
 

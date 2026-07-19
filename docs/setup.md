@@ -26,35 +26,64 @@ To switch it to NixOS:
    ```sh
    sudo nixos-install --flake <path-to-repo>#casper
    ```
-6. Reboot. Log in as `gabriel` (initial password `changeme` - change with
-   `passwd`). Then commit the real `hardware-configuration.nix`.
+6. Reboot. Log in as `gabriel` (password = the `gabriel-password` hash in
+   sops). Then commit the real `hardware-configuration.nix`.
 
-## Secrets bootstrap (after first boot)
+## Secrets (sops-nix)
 
-`profiles/secrets.nix` is wired but inert until you provide keys. Two recipients:
-your **YubiKey GPG key** (you, the editor) and **casper's host SSH key as age** (the
-machine, unattended).
+Bootstrapped and live. One shared encrypted store, `secrets/secrets.yaml`,
+committed to the repo; recipients are declared in `.sops.yaml`.
 
-1. Personal identity = the YubiKey. Confirm the card and copy your key fingerprint
-   into `.sops.yaml` as the `pgp` recipient (gabriel):
-   ```sh
-   gpg --card-status        # YubiKey is seen
-   gpg -K --with-colons     # grab the fpr line
-   ```
-2. casper's machine identity = its SSH host key, as age. Add it as the `age`
-   recipient in `.sops.yaml`:
-   ```sh
-   nix run nixpkgs#ssh-to-age -- < /etc/ssh/ssh_host_ed25519_key.pub
-   ```
-   (`sops`/`gpg-agent` with the YubiKey must be available when you edit secrets.)
-3. Create the encrypted store and add `gabriel-password` (a `mkpasswd -m yescrypt` hash):
-   ```sh
-   sops secrets/secrets.yaml
-   ```
-4. In `profiles/secrets.nix`: set `validateSopsFiles = true`, uncomment
-   `defaultSopsFile` and the `gabriel-password` secret.
-5. In `profiles/common.nix`: replace `initialPassword` with
-   `hashedPasswordFile = config.sops.secrets.gabriel-password.path;`. Rebuild.
+### How it works
+
+sops uses **envelope encryption**: each file carries one random AES-256-GCM
+*data key* that encrypts every value in it. That data key is then wrapped once
+per recipient, so any single recipient can unwrap it and read the file. A MAC
+over the content detects tampering. Current recipients:
+
+- **Your YubiKey GPG key** (`pgp` in `.sops.yaml`) — the *editor* identity.
+  Needed (plugged in, `gpg-agent` running) only when you create or edit
+  secrets on your workstation. Never needed by any host.
+- **Each host's SSH host key as age** (`age` in `.sops.yaml`) — the *machine*
+  identities. At activation, sops-nix uses `/etc/ssh/ssh_host_ed25519_key` to
+  decrypt secrets to `/run/secrets/<name>` (tmpfs, root-only). This is what
+  makes servers fully unattended: no YubiKey, no passphrase.
+
+Losing the YubiKey does not lock anything: hosts keep decrypting, and any host
+key can recover editor access (`ssh-to-age -private-key`).
+
+### Editing secrets
+
+`sops` lives in the dev shell:
+
+```sh
+nix develop -c sops secrets/secrets.yaml
+```
+
+Decrypts into `$EDITOR` (YubiKey PIN prompt), re-encrypts on save. Key names
+are visible in the committed file; only values are encrypted.
+
+Secrets currently in the store:
+
+- `tailscale-auth-key` — reusable tailnet auth key; makes enrollment of new
+  machines unattended (`profiles/tailscale.nix` picks it up automatically).
+  Auth keys expire (max 90 days): already-enrolled hosts are unaffected, but
+  enrolling a *new* machine after expiry needs a fresh key pasted here.
+- `gabriel-password` — yescrypt hash (`mkpasswd -m yescrypt`) consumed by
+  `hashedPasswordFile` in `profiles/common.nix`. `users.mutableUsers = false`,
+  so this hash is authoritative on every activation and `passwd` on a host has
+  no lasting effect.
+
+### Tailscale key expiry
+
+Two different expiries to keep straight:
+
+- **Auth key** (in sops): only gates *new* enrollments; rotate via the admin
+  console + `sops` when needed.
+- **Node keys**: each enrolled machine's key expires after ~180 days by
+  default, which would drop it off the tailnet. Disable per machine in the
+  admin console (Machines → … → Disable key expiry) — do this for every
+  long-lived host. Not settable from Nix.
 
 ## Day-to-day
 
@@ -114,20 +143,29 @@ nix fmt                                      # format (nixfmt-rfc-style)
    DNS for each `<subdomain>.<domain>` must point at the host; ports 80/443
    are opened automatically for ACME HTTP-01.
 
-### Secrets per host
+### Secrets for a new host
 
-Each machine decrypts only its own secrets, using its own SSH host key:
+Every host imports `profiles/secrets.nix` and shares `secrets/secrets.yaml`;
+a new machine just becomes a recipient:
 
-1. Derive the new host's age recipient:
+1. Derive the new host's age recipient from its SSH host key:
    `ssh gabriel@<name> 'cat /etc/ssh/ssh_host_ed25519_key.pub' | nix run nixpkgs#ssh-to-age`
-2. Add it as a recipient in `.sops.yaml`, then create `secrets/<name>.yaml`
-   encrypted to that recipient + your GPG key.
-3. In the host's config: `sops.defaultSopsFile = ../../secrets/<name>.yaml;`
-   and declare the secrets it needs.
+2. Add it under `age:` in `.sops.yaml`, then rewrap the data key for it
+   (YubiKey plugged in):
+   ```sh
+   nix develop -c sops updatekeys secrets/secrets.yaml
+   ```
+3. Deploy. The host decrypts with its own SSH host key; with the
+   `tailscale-auth-key` secret present it also joins the tailnet unattended.
+
+If a host ever needs secrets the others must not read, split a
+`secrets/<name>.yaml` with its own `creation_rules` entry and point that host's
+`sops.defaultSopsFile` at it — not needed while everything is shared.
 
 ## TODO before/after install
 
 - [ ] Confirm the disk `device` in `hosts/casper/disko.nix` (use `by-id`).
 - [ ] Replace `hosts/casper/hardware-configuration.nix` with the generated one.
-- [ ] Bootstrap sops (above), then move `gabriel`'s password off `initialPassword`.
+- [x] Bootstrap sops (above); `gabriel`'s password now comes from the
+      `gabriel-password` secret.
 - [ ] Confirm timezone (`Europe/Lisbon`) and keyboard layout (`us`).

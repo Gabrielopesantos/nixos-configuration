@@ -4,7 +4,7 @@
 #
 # Apps are PRIVATE by default: served at <subdomain>.<private.domain> (a
 # host-scoped zone, e.g. app.atlas.example.com), bound to the tailnet IP only,
-# with a wildcard cert obtained via DNS-01 — unreachable from the internet
+# with a wildcard cert obtained via DNS-01 - unreachable from the internet
 # even though public DNS resolves the name. Set `public = true` on an app to
 # expose it at <subdomain>.<domain> on the public interface instead.
 #

@@ -1,5 +1,5 @@
 # NVIDIA proprietary driver, tuned for Wayland.
-# casper has an RTX 4070 SUPER (Ada) — supports the open kernel modules.
+# casper has an RTX 4070 SUPER (Ada) - supports the open kernel modules.
 { config, ... }:
 {
   services.xserver.videoDrivers = [ "nvidia" ];

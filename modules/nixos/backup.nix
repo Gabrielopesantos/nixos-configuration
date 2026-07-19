@@ -3,7 +3,7 @@
 # so silence raises an alert.
 #
 # Opt-in per host. The flake itself is never backed up (it lives in git);
-# only unrecoverable runtime state goes in `paths` — add each new app's
+# only unrecoverable runtime state goes in `paths` - add each new app's
 # state directory when the app lands on the host.
 #
 # Usage on a host:

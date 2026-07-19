@@ -41,10 +41,10 @@ sops uses **envelope encryption**: each file carries one random AES-256-GCM
 per recipient, so any single recipient can unwrap it and read the file. A MAC
 over the content detects tampering. Current recipients:
 
-- **Your YubiKey GPG key** (`pgp` in `.sops.yaml`) — the *editor* identity.
+- **Your YubiKey GPG key** (`pgp` in `.sops.yaml`) - the *editor* identity.
   Needed (plugged in, `gpg-agent` running) only when you create or edit
   secrets on your workstation. Never needed by any host.
-- **Each host's SSH host key as age** (`age` in `.sops.yaml`) — the *machine*
+- **Each host's SSH host key as age** (`age` in `.sops.yaml`) - the *machine*
   identities. At activation, sops-nix uses `/etc/ssh/ssh_host_ed25519_key` to
   decrypt secrets to `/run/secrets/<name>` (tmpfs, root-only). This is what
   makes servers fully unattended: no YubiKey, no passphrase.
@@ -65,11 +65,11 @@ are visible in the committed file; only values are encrypted.
 
 Secrets currently in the store:
 
-- `tailscale-auth-key` — reusable tailnet auth key; makes enrollment of new
+- `tailscale-auth-key` - reusable tailnet auth key; makes enrollment of new
   machines unattended (`profiles/tailscale.nix` picks it up automatically).
   Auth keys expire (max 90 days): already-enrolled hosts are unaffected, but
   enrolling a *new* machine after expiry needs a fresh key pasted here.
-- `gabriel-password` — yescrypt hash (`mkpasswd -m yescrypt`) consumed by
+- `gabriel-password` - yescrypt hash (`mkpasswd -m yescrypt`) consumed by
   `hashedPasswordFile` in `profiles/common.nix`. `users.mutableUsers = false`,
   so this hash is authoritative on every activation and `passwd` on a host has
   no lasting effect.
@@ -82,7 +82,7 @@ Two different expiries to keep straight:
   console + `sops` when needed.
 - **Node keys**: each enrolled machine's key expires after ~180 days by
   default, which would drop it off the tailnet. Disable per machine in the
-  admin console (Machines → … → Disable key expiry) — do this for every
+  admin console (Machines -> ... -> Disable key expiry) - do this for every
   long-lived host. Not settable from Nix.
 
 ## Day-to-day
@@ -160,7 +160,7 @@ a new machine just becomes a recipient:
 
 If a host ever needs secrets the others must not read, split a
 `secrets/<name>.yaml` with its own `creation_rules` entry and point that host's
-`sops.defaultSopsFile` at it — not needed while everything is shared.
+`sops.defaultSopsFile` at it - not needed while everything is shared.
 
 ## TODO before/after install
 

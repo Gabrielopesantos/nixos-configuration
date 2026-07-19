@@ -1,5 +1,6 @@
 # Shared base for every host (workstation or server).
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -68,15 +69,16 @@
       variant = ",";
     };
 
+    # Users are fully declarative: passwords come from config on every
+    # activation, `passwd` on the host has no lasting effect.
+    users.mutableUsers = false;
+
     # Single admin user. Present on every host so you can SSH into servers too.
     users.users.gabriel = {
       isNormalUser = true;
       description = "Gabriel Santos";
-      # Bootstrap password for the first boot. After sops-nix is wired
-      # (see profiles/secrets.nix), replace this with:
-      #   hashedPasswordFile = config.sops.secrets.gabriel-password.path;
-      # and delete initialPassword.
-      initialPassword = "changeme";
+      # yescrypt hash in sops (`mkpasswd -m yescrypt`, key gabriel-password).
+      hashedPasswordFile = config.sops.secrets.gabriel-password.path;
       extraGroups = [
         "wheel"
         "networkmanager"

@@ -18,8 +18,9 @@
   # profiles/tailscale.nix).
   sops.secrets.tailscale-auth-key = { };
 
-  # Future: login password via secret instead of initialPassword (common.nix).
-  # sops.secrets.gabriel-password = {
-  #   neededForUsers = true; # decrypted early enough to set a login password
-  # };
+  # Login password for gabriel (yescrypt hash from `mkpasswd -m yescrypt`),
+  # consumed by hashedPasswordFile in common.nix.
+  sops.secrets.gabriel-password = {
+    neededForUsers = true; # decrypted early enough to set a login password
+  };
 }

@@ -25,6 +25,9 @@
     # Workstation profile.
     ../../profiles/desktop.nix
 
+    # zram + swapfile (no swap partition in disko.nix).
+    ../../profiles/swap.nix
+
     # NVIDIA proprietary driver tuned for Wayland.
     ../../profiles/nvidia.nix
   ];

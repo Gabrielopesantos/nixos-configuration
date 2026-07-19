@@ -72,33 +72,82 @@ systemctl status tailscaled
 ss -tlnp | grep -E '80|443'
 ```
 
-## DNS
+## DNS and app exposure
 
-The configured subdomain is an A record pointing at `<ATLAS_IP>`. It should be kept
-DNS-only (grey cloud) in Cloudflare so nginx can obtain and serve its own Let's Encrypt
-certificate via ACME HTTP-01.
+All apps sit behind one nginx (the `reverse-proxy` module). Two classes:
 
-## Homepage (tailnet-only)
+- **Public apps** (`public = true`): explicit A record
+  `<subdomain>.gabrielopesantos.com` → public IP, kept DNS-only (grey cloud)
+  in Cloudflare so nginx can obtain its own cert via ACME HTTP-01.
+- **Private apps** (the default): served at
+  `<subdomain>.atlas.gabrielopesantos.com`, covered by a single wildcard A
+  record `*.atlas.gabrielopesantos.com` → the tailnet IP (`100.83.163.93`).
+  The name resolves publicly but only routes inside the tailnet, and the
+  vhost additionally binds the tailnet IP exclusively. One wildcard cert
+  `*.atlas.gabrielopesantos.com` is obtained via DNS-01 with a Cloudflare API
+  token, so private app names never appear in certificate-transparency logs.
 
-`homepage-dashboard` is deliberately *not* behind the public reverse proxy.
-It binds loopback only (`HOSTNAME=127.0.0.1`, port 8082) and is published to
-the tailnet by the `tailscale-serve-homepage` unit:
+`homepage-dashboard` is a private app at
+`https://home.atlas.gabrielopesantos.com` (loopback-bound on port 8082,
+proxied by nginx). The old `tailscale serve` publication is gone.
 
-- Address: **`https://atlas.tailcadc07.ts.net`** — from any tailnet device.
-- `tailscale serve` terminates TLS inside tailscaled with an automatic
-  Let's Encrypt certificate for the ts.net name, then proxies to
-  `127.0.0.1:8082`. Requires MagicDNS + HTTPS certificates enabled on the
-  tailnet.
-- Bare `https://atlas` cannot work: public CAs don't issue certificates for a
-  bare hostname, so the TLS handshake has nothing valid to present. Use the
-  FQDN (or add a plain-HTTP `--http=80` serve if `http://atlas` is ever
-  wanted; tailnet traffic is WireGuard-encrypted either way).
-- Testing from atlas itself always hits nginx instead — serve interception
-  only applies to connections from *other* tailnet nodes. Verify from casper.
+## SSH
 
-The unit is ordered after `tailscaled-autoconnect.service`; serve commands
-fail while the node is logged out, and autoconnect is what completes the
-auth-key login on first boot.
+Tailnet-only: `tailscale0` is a trusted firewall interface and port 22 is not
+opened publicly (`services.openssh.openFirewall = false`). If the tailnet is
+ever unreachable, use the Hetzner web console as break-glass access.
+
+## Backups
+
+The reusable `backup` module (`modules/nixos/backup.nix`, opt-in per host)
+runs a nightly restic backup of app state directories to Backblaze B2
+(bucket `atlas-backups`), encrypted, pruned (7 daily / 4 weekly / 6 monthly),
+with a full `restic check` after each run. Success/failure is reported to a
+healthchecks.io check — silence alerts.
+
+Add each new app's state directory to `services.backup.paths` when the app
+lands on the host.
+
+Restore drill:
+
+```sh
+sudo restic-state snapshots       # wrapper with env/repo/password preset
+sudo restic-state restore latest --target /tmp/restore
+```
+
+## Updates
+
+`system.autoUpgrade` pulls `github:gabrielopesantos/nixos-configuration`
+daily at ~04:00 and rebuilds; reboots (kernel/systemd bumps) happen only
+inside the 04:00–06:00 window. Inputs only move when `flake.lock` changes on
+main: the `update-flake-lock` GitHub Action opens a weekly PR, and merging it
+is the human gate. A failed build leaves the running system untouched.
+
+## One-time setup checklist (secrets & external services)
+
+The config references sops keys that must exist before deploying. Add them
+with `nix develop -c sops secrets/secrets.yaml` (YubiKey inserted):
+
+1. `cloudflare-acme-env` — literal line
+   `CLOUDFLARE_DNS_API_TOKEN=<token>`; create the token in the Cloudflare
+   dashboard with **Zone → DNS → Edit** on `gabrielopesantos.com` only.
+2. `restic-password` — generate once (`openssl rand -base64 32`) and keep it
+   safe outside the repo too; losing it means losing the backups.
+3. `restic-env` — two lines: `B2_ACCOUNT_ID=<keyID>` and
+   `B2_ACCOUNT_KEY=<applicationKey>`, from a Backblaze application key
+   scoped to the `atlas-backups` bucket (create the bucket first, private).
+4. `healthchecks-url` — ping URL from a new check on healthchecks.io
+   (e.g. `https://hc-ping.com/<uuid>`), expected period 1 day.
+
+External, outside the repo:
+
+5. Cloudflare DNS: wildcard A record `*.atlas.gabrielopesantos.com` →
+   `100.83.163.93` (grey cloud); keep `kuma.gabrielopesantos.com` → public
+   IP (grey cloud).
+6. UptimeRobot (or similar): HTTPS monitor on
+   `https://kuma.gabrielopesantos.com` — external "is atlas alive" alert.
+7. After the first deploy, verify SSH still works over the tailnet from a
+   *new* terminal before closing the session that deployed.
 
 ## Reverse proxy security note
 

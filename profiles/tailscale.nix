@@ -22,6 +22,12 @@
     authKeyFile = config.sops.secrets.tailscale-auth-key.path;
   };
 
+  # Single-person tailnet: treat it like a LAN. Lets tailnet peers reach any
+  # local service (SSH, private nginx vhosts) without per-port firewall holes.
+  networking.firewall.trustedInterfaces = lib.mkIf config.services.tailscale.enable [
+    config.services.tailscale.interfaceName
+  ];
+
   # CLI on machines that actually run tailscaled.
   environment.systemPackages = lib.optional config.services.tailscale.enable pkgs.tailscale;
 }

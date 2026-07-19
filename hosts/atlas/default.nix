@@ -37,7 +37,7 @@
   services.homepage-dashboard = {
     enable = true;
     listenPort = 8082;
-    allowedHosts = "atlas,atlas.tailcadc07.ts.net,localhost:8082,127.0.0.1:8082";
+    allowedHosts = "atlas.tailcadc07.ts.net,localhost:8082,127.0.0.1:8082";
     settings = {
       title = "atlas";
       theme = "dark";
@@ -62,6 +62,10 @@
       websockets = true;
     };
   };
+
+  # The homepage module has no bind-address option; its Next.js server reads
+  # HOSTNAME. Loopback-only so nothing can reach it except tailscale serve.
+  systemd.services.homepage-dashboard.environment.HOSTNAME = "127.0.0.1";
 
   # Homepage is private: published on the tailnet only, at
   # https://atlas.tailcadc07.ts.net (needs MagicDNS + HTTPS certs enabled in

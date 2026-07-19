@@ -32,10 +32,6 @@
   networking.hostName = "casper";
   hostCategory = "desktop";
 
-  # casper is the only host for now; keep tailscaled off until there is
-  # something to connect to. Delete this line to join the tailnet.
-  services.tailscale.enable = false;
-
   # Bootloader. nixos-generate-config does NOT manage this, so it lives here.
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 5;

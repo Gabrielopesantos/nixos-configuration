@@ -18,4 +18,14 @@
 
   # Reasonable headless default.
   services.qemuGuest.enable = lib.mkDefault true;
+
+  services.fail2ban = {
+    enable = lib.mkDefault true;
+    maxretry = lib.mkDefault 5;
+    bantime = lib.mkDefault "1h";
+    bantime-increment = {
+      enable = lib.mkDefault true;
+    };
+    ignoreIP = lib.mkDefault [ "100.64.0.0/10" ];
+  };
 }

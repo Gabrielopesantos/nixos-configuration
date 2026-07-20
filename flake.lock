@@ -89,7 +89,8 @@
         "hardware": "hardware",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-unstable": "nixpkgs-unstable",
-        "sops-nix": "sops-nix"
+        "sops-nix": "sops-nix",
+        "website": "website"
       }
     },
     "sops-nix": {
@@ -109,6 +110,27 @@
       "original": {
         "owner": "Mic92",
         "repo": "sops-nix",
+        "type": "github"
+      }
+    },
+    "website": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784575210,
+        "narHash": "sha256-ePxQVPIvXqqFWqpkQCW4YZh6uGU8QG3g8loX7rVlWxU=",
+        "owner": "gabrielopesantos",
+        "repo": "gabrielopesantos.github.io",
+        "rev": "5c9009caab5d2fafc41ce074f8e7601f7230bf21",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gabrielopesantos",
+        "ref": "nix-main",
+        "repo": "gabrielopesantos.github.io",
         "type": "github"
       }
     }

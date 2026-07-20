@@ -2,7 +2,12 @@
 # module: Uptime Kuma is public (kuma.gabrielopesantos.com); everything else
 # is tailnet-only at <app>.atlas.gabrielopesantos.com (wildcard DNS record
 # pointing at the tailnet IP, wildcard cert via Cloudflare DNS-01).
-{ config, inputs, ... }:
+{
+  config,
+  inputs,
+  pkgs,
+  ...
+}:
 {
   imports = [
     ./hardware-configuration.nix
@@ -92,6 +97,12 @@
               description = "Status monitoring";
             };
           }
+          {
+            "gabrielopesantos" = {
+              href = "https://gabrielopesantos.com";
+              description = "My Personal Website";
+            };
+          }
         ];
       }
     ];
@@ -115,6 +126,18 @@
     apps.homepage = {
       subdomain = "home";
       port = 8082;
+    };
+  };
+
+  # Serve the static website on the apex domain.
+  services.nginx.virtualHosts."gabrielopesantos.com" = {
+    default = true;
+    forceSSL = true;
+    enableACME = true;
+    serverAliases = [ "www.gabrielopesantos.com" ];
+    root = "${inputs.website.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/website";
+    locations."/" = {
+      index = "index.html";
     };
   };
 

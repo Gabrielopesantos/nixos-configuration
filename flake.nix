@@ -24,6 +24,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Static website, built with Zola and served by nginx on atlas.
+    website = {
+      url = "github:gabrielopesantos/gabrielopesantos.github.io/nix-main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # NOTE: home-manager is intentionally NOT an input here.
     # The user environment for 'gabriel' lives in a separate repo and is
     # applied standalone with `home-manager switch`.

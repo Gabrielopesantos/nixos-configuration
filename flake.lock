@@ -120,11 +120,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784575210,
-        "narHash": "sha256-ePxQVPIvXqqFWqpkQCW4YZh6uGU8QG3g8loX7rVlWxU=",
+        "lastModified": 1784668791,
+        "narHash": "sha256-kByvV/outELb/EVMyZluYfhQGL/R9V65tcwBvBe9sVQ=",
         "owner": "gabrielopesantos",
         "repo": "gabrielopesantos.github.io",
-        "rev": "5c9009caab5d2fafc41ce074f8e7601f7230bf21",
+        "rev": "60776be63ebd30ef87e374ed9438599c312f8a47",
         "type": "github"
       },
       "original": {

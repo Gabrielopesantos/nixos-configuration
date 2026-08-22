@@ -1,7 +1,4 @@
-# atlas - Hetzner Cloud VPS. All apps are fronted by the reverse-proxy
-# module: Uptime Kuma is public (kuma.gabrielopesantos.com); everything else
-# is tailnet-only at <app>.atlas.gabrielopesantos.com (wildcard DNS record
-# pointing at the tailnet IP, wildcard cert via Cloudflare DNS-01).
+# atlas - Hetzner Cloud VPS
 {
   config,
   inputs,

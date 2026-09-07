@@ -92,7 +92,8 @@ with a full `restic check` after each run. Success/failure is reported to a
 healthchecks.io check - silence alerts.
 
 Add each new app's state directory to `services.backup.paths` when the app
-lands on the host.
+lands on the host. Currently backed up: `/var/lib/uptime-kuma` and
+`/var/lib/hermes` (Hermes Agent sessions, memories, skills, `.env`).
 
 Restore drill:
 
@@ -109,6 +110,20 @@ inside the 04:00–06:00 window. Inputs only move when `flake.lock` changes on
 main: the `update-flake-lock` GitHub Action opens a weekly PR, and merging it
 is the human gate. A failed build leaves the running system untouched.
 
+### Bumping Hermes Agent
+
+The `hermes-agent` flake input is pinned to a release tag and there is no 
+upstream binary cache. Every bump is a from-source build of a the agent,
+too heavy for atlas, so we bump it from casper:
+
+```sh
+# edit flake.nix: hermes-agent.url = ".../vYYYY.M.D"  (new tag)
+nix flake lock --update-input hermes-agent
+nix build .#nixosConfigurations.atlas.config.system.build.toplevel    # builds on casper
+nixos-rebuild switch --flake .#atlas --target-host gabriel@atlas \
+  --use-remote-sudo --ask-sudo-password                               # copies the closure over
+```
+
 ## One-time setup checklist (secrets & external services)
 
 The config references sops keys that must exist before deploying. Add them
@@ -124,16 +139,28 @@ with `nix develop -c sops secrets/secrets.yaml` (YubiKey inserted):
    scoped to the `atlas-backups` bucket (create the bucket first, private).
 4. `healthchecks-url` - ping URL from a new check on healthchecks.io
    (e.g. `https://hc-ping.com/<uuid>`), expected period 1 day.
+5. `hermes-env` - env file for Hermes Agent, one `KEY=value` per line:
+
+   ```
+   OPENROUTER_API_KEY=<key>
+   TELEGRAM_BOT_TOKEN=<from @BotFather>
+   TELEGRAM_ALLOWED_USERS=<your numeric telegram id>
+   API_SERVER_ENABLED=true
+   API_SERVER_KEY=<openssl rand -hex 32>
+   HERMES_DASHBOARD_BASIC_AUTH_USERNAME=gabriel
+   HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<strong password>
+   HERMES_DASHBOARD_BASIC_AUTH_SECRET=<openssl rand -base64 32>
+   ```
 
 External, outside the repo:
 
-5. Cloudflare DNS: wildcard A record `*.atlas.gabrielopesantos.com` -> 
+1. Cloudflare DNS: wildcard A record `*.atlas.gabrielopesantos.com` -> 
    `100.83.163.93` (grey cloud); keep `kuma.gabrielopesantos.com` -> public
    IP (grey cloud).
-6. UptimeRobot (or similar): HTTPS monitor on
+2. UptimeRobot (or similar): HTTPS monitor on
    `https://kuma.gabrielopesantos.com` - external "is atlas alive" alert.
-7. After the first deploy, verify SSH still works over the tailnet from a
-   *new* terminal before closing the session that deployed.
+3. After the first deploy, verify SSH still works over the tailnet from a
+   new terminal before closing the session that deployed.
 
 ## Reverse proxy security note
 

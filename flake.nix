@@ -3,7 +3,7 @@
 
   inputs = {
     # Stable channel - the default for all hosts.
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
 
     # Unstable, exposed as 'pkgs.unstablePkgs' via overlays/default.nix
     # for the occasional bleeding-edge package.

@@ -4,9 +4,14 @@
 # Adding a machine: derive its age key from the host SSH key
 #   nix run nixpkgs#ssh-to-age -- < /etc/ssh/ssh_host_ed25519_key.pub
 # add it to ../.sops.yaml, then `sops updatekeys secrets/secrets.yaml`.
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 {
   imports = [ inputs.sops-nix.nixosModules.sops ];
+
+  sops.package = ((pkgs.callPackage inputs.sops-nix { }).sops-install-secrets).override {
+    buildGoModule = pkgs.buildGo126Module;
+    go = pkgs.go_1_26;
+  };
 
   # Decrypt on-host using the machine's SSH host key as an age identity.
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];

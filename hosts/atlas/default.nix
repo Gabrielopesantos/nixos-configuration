@@ -159,6 +159,8 @@
       # A non-loopback public_url is what engages the dashboard auth gate and
       # makes its Host-header check accept requests forwarded by nginx.
       dashboard.public_url = "https://hermes.atlas.gabrielopesantos.com";
+      dashboard.theme = "mono";
+      dashboard.font = "inter";
     };
 
     backend = {

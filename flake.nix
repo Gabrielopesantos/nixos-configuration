@@ -1,9 +1,9 @@
 {
-  description = "NixOS configuration (casper + future hosts)";
+  description = "NixOS configuration";
 
   inputs = {
     # Stable channel - the default for all hosts.
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
 
     # Unstable, exposed as 'pkgs.unstablePkgs' via overlays/default.nix
     # for the occasional bleeding-edge package.

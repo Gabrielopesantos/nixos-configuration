@@ -24,7 +24,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Static website, built with Zola and served by nginx on atlas.
     website = {
       url = "github:gabrielopesantos/gabrielopesantos.github.io/nix-main";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -34,7 +33,7 @@
     # Tag-pinned: no upstream binary cache, so every bump is a
     # from-source uv2nix build - bump by hand and deploy from casper.
     # No `nixpkgs.follows`: built against upstream's pin.
-    hermes-agent.url = "github:NousResearch/hermes-agent/v2026.8.31";
+    hermes-agent.url = "github:NousResearch/hermes-agent/v2026.9.24";
 
     # NOTE: home-manager is intentionally not an input here.
     # The user environment for 'gabriel' lives in a separate repo and is

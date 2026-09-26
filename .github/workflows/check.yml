@@ -1,0 +1,16 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - run: nix flake check
+      - run: nix build .#nixosConfigurations.casper.config.system.build.toplevel --no-link
+      - run: nix build .#nixosConfigurations.atlas.config.system.build.toplevel --no-link

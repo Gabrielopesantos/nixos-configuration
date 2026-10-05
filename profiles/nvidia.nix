@@ -1,5 +1,5 @@
 # NVIDIA proprietary driver, tuned for Wayland.
-# casper has an RTX 4070 SUPER (Ada) - supports the open kernel modules.
+# casper has an RTX 4070 SUPER (Ada).
 { config, ... }:
 {
   services.xserver.videoDrivers = [ "nvidia" ];
@@ -13,9 +13,8 @@
     # Required for Wayland (also sets nvidia-drm.modeset=1).
     modesetting.enable = true;
 
-    # Ada-and-newer: use the open-source kernel modules (NVIDIA's recommended
-    # path on these GPUs). Set to false if you hit regressions.
-    open = true;
+    # Proprietary modules: open modules failed S3 resume on 580.142.
+    open = false;
 
     # Installs the `nvidia-settings` control panel.
     nvidiaSettings = true;

@@ -2,33 +2,6 @@
 
 Flake-based NixOS config. One host today, structured for more.
 
-## Layout
-
-```
-flake.nix                       # inputs + nixosConfigurations
-hosts/
-  casper/
-    default.nix                 # host: hostname, bootloader, imports its profiles
-    disko.nix                   # declarative disk layout (install-time)
-    hardware-configuration.nix  # PLACEHOLDER - regenerate on the machine
-profiles/
-  common.nix                    # base: nix settings, gc, locale, keyboard, user gabriel, ssh
-  tailscale.nix                 # tailnet membership, on by default (imported by common.nix)
-  desktop.nix                   # meta-profile composing the granular desktop profiles below
-  graphical/plasma.nix          # KDE Plasma 6 / Wayland, SDDM
-  graphical/fonts.nix           # desktop font set
-  audio/pipewire.nix            # PipeWire audio
-  networking/networkmanager.nix # NetworkManager (desktops/laptops)
-  nvidia.nix                    # NVIDIA proprietary driver, Wayland-tuned
-  secrets.nix                   # sops-nix wiring (store: secrets/secrets.yaml)
-  server.nix                    # headless profile for future cloud/dev hosts
-modules/nixos/                  # reusable modules (reverse-proxy; exported via flake)
-overlays/                       # custom pkgs + `pkgs.unstablePkgs` from nixpkgs-unstable
-pkgs/                           # custom package definitions
-secrets/secrets.yaml            # encrypted secret store (safe to commit)
-.sops.yaml                      # secrets recipients + creation rules
-```
-
 A host imports `hardware-configuration.nix` + `disko.nix` plus whichever profiles
 apply. A desktop imports `desktop.nix` + `nvidia.nix`; a server imports `server.nix`.
 

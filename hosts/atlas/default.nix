@@ -19,18 +19,7 @@
 
     inputs.self.nixosModules.reverse-proxy
     inputs.self.nixosModules.backup
-
-    inputs.hermes-agent.nixosModules.default
   ];
-
-  # Upstream Cachix cache, currently unpopulated by their CI, kept so it just
-  # works if that changes. hermes-agent is build-from-source until then.
-  nix.settings = {
-    extra-substituters = [ "https://hermes-agent.cachix.org" ];
-    extra-trusted-public-keys = [
-      "hermes-agent.cachix.org-1:jN3pjR50Mxi4SESKC/FIMNM6/LCosvPk2VUwzVvebzU="
-    ];
-  };
 
   networking.hostName = "atlas";
   hostCategory = "server";
@@ -64,14 +53,6 @@
     useOSProber = false;
   };
 
-  services.uptime-kuma = {
-    enable = true;
-    settings = {
-      HOST = "127.0.0.1";
-      PORT = "3001";
-    };
-  };
-
   services.homepage-dashboard = {
     enable = true;
     listenPort = 8082;
@@ -100,12 +81,6 @@
       {
         Monitoring = [
           {
-            "Uptime Kuma" = {
-              href = "https://kuma.gabrielopesantos.com";
-              description = "Status monitoring";
-            };
-          }
-          {
             "gabrielopesantos" = {
               href = "https://gabrielopesantos.com";
               description = "My Personal Website";
@@ -125,54 +100,11 @@
       address = "100.83.163.93"; # atlas's tailnet IP
       acmeEnvironmentFile = config.sops.secrets.cloudflare-acme-env.path;
     };
-    apps.kuma = {
-      subdomain = "kuma";
-      port = 3001;
-      websockets = true;
-      public = true;
-    };
     apps.homepage = {
       subdomain = "home";
       port = 8082;
     };
-    # Hermes Agent web dashboard.
-    apps.hermes = {
-      subdomain = "hermes";
-      port = 9119;
-      websockets = true;
-    };
   };
-
-  # Hermes Agent, Two hardened systemd units, both as the dedicated `hermes`
-  # user (ProtectSystem=strict):
-  #   hermes-agent    the messaging gateway (Telegram) + OpenAI-compatible API
-  #   hermes-backend  the web dashboard
-  # The agent runs arbitrary code as `hermes` and can reach every tailnet peer.
-  services.hermes-agent = {
-    enable = true;
-    addToSystemPackages = true; # `hermes` CLI over SSH
-    # Leave `package` at the default `full` build. Any extraDependencyGroups/
-    # extraPythonPackages override re-invokes uv2nix and rebuilds everything.
-
-    settings = {
-      model.default = "openai/gpt-oss-120b";
-      # A non-loopback public_url is what engages the dashboard auth gate and
-      # makes its Host-header check accept requests forwarded by nginx.
-      dashboard.public_url = "https://hermes.atlas.gabrielopesantos.com";
-      dashboard.theme = "mono";
-      dashboard.font = "inter";
-    };
-
-    backend = {
-      mode = "dashboard";
-      host = "127.0.0.1"; # nginx fronts it
-      port = 9119;
-    };
-
-    environmentFiles = [ config.sops.secrets.hermes-env.path ];
-  };
-
-  sops.secrets.hermes-env.owner = "hermes";
 
   # Serve the static website on the apex domain.
   services.nginx.virtualHosts."gabrielopesantos.com" = {
@@ -190,19 +122,6 @@
   #   CLOUDFLARE_DNS_API_TOKEN=<token with Zone:DNS:Edit on gabrielopesantos.com>
   # MUST exist in secrets/secrets.yaml before this config is deployed.
   sops.secrets.cloudflare-acme-env = { };
-
-  # Nightly restic backups of app state to Backblaze B2, heartbeat to
-  # healthchecks.io (see modules/nixos/backup.nix for the secrets it needs).
-  sops.secrets.healthchecks-url = { };
-  services.backup = {
-    enable = true;
-    repository = "b2:santoslabs-atlas-backups:restic";
-    paths = [
-      "/var/lib/uptime-kuma"
-      "/var/lib/hermes" # hermes-agent: sessions, memories, skills, .env
-    ];
-    healthchecksUrlFile = config.sops.secrets.healthchecks-url.path;
-  };
 
   # The homepage module has no bind-address option; its Next.js server reads
   # HOSTNAME. Loopback-only so nothing can reach it except nginx on this host.

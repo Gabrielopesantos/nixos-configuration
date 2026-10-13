@@ -1,20 +1,16 @@
 # atlas
 
-Hetzner Cloud VPS running NixOS, configured as a workload server behind the
-reverse-proxy module. The actual services on the host are defined in
-`hosts/atlas/default.nix` and are intentionally not documented here because they
-change over time.
+Hetzner Cloud VPS, NixOS, workload server behind the reverse-proxy module.
+Services live in `hosts/atlas/default.nix`, not documented here (change over time).
 
 ## Repo layout
 
-The host is declared in this flake:
-
-- `hosts/atlas/default.nix` - hostname, profiles, GRUB, and reverse-proxied apps.
-- `hosts/atlas/disko.nix` - GPT layout: 1 MiB `EF02` BIOS boot partition + ext4 root on `/dev/sda`.
-- `hosts/atlas/hardware-configuration.nix` - minimal Hetzner Cloud hardware config.
+- `hosts/atlas/default.nix` - hostname, profiles, GRUB, reverse-proxied apps.
+- `hosts/atlas/disko.nix` - GPT: 1 MiB `EF02` BIOS boot + ext4 root on `/dev/sda`.
+- `hosts/atlas/hardware-configuration.nix` - Hetzner Cloud hardware config.
 - `flake.nix` - registers `nixosConfigurations.atlas`.
 
-The base image is Ubuntu 26.04; NixOS is installed on top with `nixos-anywhere`.
+Base image Ubuntu 26.04; NixOS installed on top via `nixos-anywhere`.
 
 ## Install / reinstall
 
@@ -29,27 +25,25 @@ nix run github:nix-community/nixos-anywhere -- \
   root@<ATLAS_IP>
 ```
 
-The `--kexec-extra-flags "-c"` is required because Ubuntu 26.04's kernel rejects the
-`kexec_file_load` syscall that `nixos-anywhere` uses by default. The `-c` flag forces
-the legacy `kexec_load` syscall instead. Without it the install fails with
+`--kexec-extra-flags "-c"` required: Ubuntu 26.04's kernel rejects
+`kexec_file_load`; `-c` forces legacy `kexec_load`. Without it:
 `kexec_file_load failed: Address not available`.
 
 ## Post-install
 
 1. Make the host a sops recipient (see "Secrets for a new host" in
    `docs/setup.md`): add its SSH age key to `.sops.yaml`, `sops updatekeys`,
-   deploy. With the `tailscale-auth-key` secret it joins the tailnet
-   unattended - no manual `tailscale up`.
-2. In the Tailscale admin console: Machines -> atlas -> Disable key expiry
-   (otherwise the node drops off the tailnet after ~180 days).
+   deploy. `tailscale-auth-key` secret joins the tailnet unattended.
+2. Tailscale admin console: Machines -> atlas -> disable key expiry
+   (else node drops off tailnet after ~180 days).
 
 ## Day-to-day commands
 
 ```sh
-# Build and evaluate the configuration
+# Build and evaluate
 nix build .#nixosConfigurations.atlas.config.system.build.toplevel
 
-# Deploy once the host is on the tailnet (MagicDNS name: atlas)
+# Deploy (MagicDNS name: atlas)
 nixos-rebuild switch --flake .#atlas --target-host gabriel@atlas \
   --use-remote-sudo --ask-sudo-password
 ```
@@ -64,38 +58,33 @@ ss -tlnp | grep -E '80|443'
 
 ## DNS and app exposure
 
-All apps sit behind one nginx (the `reverse-proxy` module). Two classes:
+All apps behind one nginx (`reverse-proxy` module). Two classes:
 
-- **Public apps** (`public = true`): explicit A record
-  `<subdomain>.gabrielopesantos.com` -> public IP, kept DNS-only (grey cloud)
-  in Cloudflare so nginx can obtain its own cert via ACME HTTP-01.
-- **Private apps** (the default): served at
-  `<subdomain>.atlas.gabrielopesantos.com`, covered by a single wildcard A
-  record `*.atlas.gabrielopesantos.com` -> the tailnet IP (`100.83.163.93`).
-  The name resolves publicly but only routes inside the tailnet, and the
-  vhost additionally binds the tailnet IP exclusively. One wildcard cert
-  `*.atlas.gabrielopesantos.com` is obtained via DNS-01 with a Cloudflare API
-  token, so private app names never appear in certificate-transparency logs.
+- **Public** (`public = true`): A record `<subdomain>.gabrielopesantos.com`
+  -> public IP, DNS-only (grey cloud); nginx gets its cert via ACME HTTP-01.
+- **Private** (default): `<subdomain>.atlas.gabrielopesantos.com`, covered by
+  wildcard A record `*.atlas.gabrielopesantos.com` -> tailnet IP
+  (`100.83.163.93`). Name resolves publicly, routes only inside the tailnet;
+  vhost binds the tailnet IP exclusively. One wildcard cert via DNS-01 with a
+  Cloudflare API token, so private names never hit CT logs.
 
 ## SSH
 
-Tailnet-only: `tailscale0` is a trusted firewall interface and port 22 is not
-opened publicly (`services.openssh.openFirewall = false`). If the tailnet is
-ever unreachable, use the Hetzner web console as break-glass access.
+Tailnet-only: `tailscale0` trusted, port 22 closed publicly
+(`services.openssh.openFirewall = false`). Break-glass: Hetzner web console.
 
 ## Backups
 
-The reusable `backup` module (`modules/nixos/backup.nix`, opt-in per host)
-runs a nightly restic backup of app state directories to Backblaze B2
-(bucket `atlas-backups`), encrypted, pruned (7 daily/4 weekly/6 monthly),
-with a full `restic check` after each run. Success/failure is reported to a
-healthchecks.io check - silence alerts.
+`backup` module (`modules/nixos/backup.nix`, opt-in per host): nightly restic
+to Backblaze B2 (bucket `atlas-backups`), encrypted, pruned
+(7 daily/4 weekly/6 monthly), `restic check` after each run, heartbeat to
+healthchecks.io.
 
-Add each new app's state directory to `services.backup.paths` when the app
-lands on the host. Currently backed up: `/var/lib/uptime-kuma` and
-`/var/lib/hermes` (Hermes Agent sessions, memories, skills, `.env`).
+Disabled on atlas: no app state worth backing up. Re-enable
+`services.backup` (see module header) with `paths` listing each app's state
+dir once one needs it.
 
-Restore drill:
+Restore drill (while enabled):
 
 ```sh
 sudo restic-state snapshots       # wrapper with env/repo/password preset
@@ -105,75 +94,40 @@ sudo restic-state restore latest --target /tmp/restore
 ## Updates
 
 `system.autoUpgrade` pulls `github:gabrielopesantos/nixos-configuration`
-daily at ~04:00 and rebuilds; reboots (kernel/systemd bumps) happen only
-inside the 04:00–06:00 window. Inputs only move when `flake.lock` changes on
-main: the `update-flake-lock` GitHub Action opens a weekly PR, and merging it
-is the human gate. A failed build leaves the running system untouched.
-
-### Bumping Hermes Agent
-
-The `hermes-agent` flake input is pinned to a release tag and there is no 
-upstream binary cache. Every bump is a from-source build of a the agent,
-too heavy for atlas, so we bump it from casper:
-
-```sh
-# edit flake.nix: hermes-agent.url = ".../vYYYY.M.D"  (new tag)
-nix flake lock --update-input hermes-agent
-nix build .#nixosConfigurations.atlas.config.system.build.toplevel    # builds on casper
-nixos-rebuild switch --flake .#atlas --target-host gabriel@atlas \
-  --use-remote-sudo --ask-sudo-password                               # copies the closure over
-```
+daily ~04:00, rebuilds; reboots only inside 04:00-06:00. Inputs move only
+when `flake.lock` changes on main (weekly `update-flake-lock` PR, merged by
+hand = human gate). Failed build leaves running system untouched.
 
 ## One-time setup checklist (secrets & external services)
 
-The config references sops keys that must exist before deploying. Add them
-with `nix develop -c sops secrets/secrets.yaml` (YubiKey inserted):
+Add via `nix develop -c sops secrets/secrets.yaml` (YubiKey inserted):
 
-1. `cloudflare-acme-env` - literal line
-   `CLOUDFLARE_DNS_API_TOKEN=<token>`; create the token in the Cloudflare
-   dashboard with **Zone -> DNS -> Edit** on `gabrielopesantos.com` only.
-2. `restic-password` - generate once (`openssl rand -base64 32`) and keep it
-   safe outside the repo too; losing it means losing the backups.
-3. `restic-env` - two lines: `B2_ACCOUNT_ID=<keyID>` and
-   `B2_ACCOUNT_KEY=<applicationKey>`, from a Backblaze application key
-   scoped to the `atlas-backups` bucket (create the bucket first, private).
-4. `healthchecks-url` - ping URL from a new check on healthchecks.io
-   (e.g. `https://hc-ping.com/<uuid>`), expected period 1 day.
-5. `hermes-env` - env file for Hermes Agent, one `KEY=value` per line:
-
-   ```
-   OPENROUTER_API_KEY=<key>
-   TELEGRAM_BOT_TOKEN=<from @BotFather>
-   TELEGRAM_ALLOWED_USERS=<your numeric telegram id>
-   API_SERVER_ENABLED=true
-   API_SERVER_KEY=<openssl rand -hex 32>
-   HERMES_DASHBOARD_BASIC_AUTH_USERNAME=gabriel
-   HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<strong password>
-   HERMES_DASHBOARD_BASIC_AUTH_SECRET=<openssl rand -base64 32>
-   ```
+1. `cloudflare-acme-env` - `CLOUDFLARE_DNS_API_TOKEN=<token>`; Cloudflare
+   dashboard, **Zone -> DNS -> Edit** on `gabrielopesantos.com` only.
+2. `restic-password` - generate once (`openssl rand -base64 32`), keep a
+   copy outside the repo too; losing it loses the backups.
+3. `restic-env` - `B2_ACCOUNT_ID=<keyID>` + `B2_ACCOUNT_KEY=<applicationKey>`,
+   from a Backblaze key scoped to `atlas-backups` (private bucket).
+4. `healthchecks-url` - ping URL from a healthchecks.io check, period 1 day.
+   Only needed once `services.backup` is re-enabled.
 
 External, outside the repo:
 
-1. Cloudflare DNS: wildcard A record `*.atlas.gabrielopesantos.com` -> 
-   `100.83.163.93` (grey cloud); keep `kuma.gabrielopesantos.com` -> public
-   IP (grey cloud).
-2. UptimeRobot (or similar): HTTPS monitor on
-   `https://kuma.gabrielopesantos.com` - external "is atlas alive" alert.
-3. After the first deploy, verify SSH still works over the tailnet from a
-   new terminal before closing the session that deployed.
+1. Cloudflare DNS: wildcard A record `*.atlas.gabrielopesantos.com` ->
+   `100.83.163.93` (grey cloud).
+2. After first deploy, verify SSH still works over the tailnet from a new
+   terminal before closing the deploying session.
 
 ## Reverse proxy security note
 
-The reverse proxy module forwards each subdomain to `address:port` (default `address =
-"127.0.0.1"`). The app process must bind to that address, not the wildcard `0.0.0.0`, or
-it can be reached directly on the public IP and bypass nginx/TLS.
+Module forwards each subdomain to `address:port` (default
+`address = "127.0.0.1"`). App must bind that address, not `0.0.0.0`, or it's
+reachable directly on the public IP, bypassing nginx/TLS.
 
-For native NixOS services the module only opens ports 80/443 in the firewall, so the
-firewall is the safety net if a service happens to bind wide. For OCI containers
- publish the container port to loopback explicitly, e.g. `127.0.0.1:3000:3000`,
- because container runtimes can inject iptables rules that bypass the NixOS firewall.
-
-Example with an OCI container:
+Native NixOS services: firewall only opens 80/443, so it's the safety net.
+OCI containers: publish the port to loopback explicitly
+(`127.0.0.1:3000:3000`) - container runtimes can inject iptables rules that
+bypass the NixOS firewall.
 
 ```nix
 services.reverseProxy.apps.myapp = {

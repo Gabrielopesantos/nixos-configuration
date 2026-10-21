@@ -160,7 +160,17 @@ in
               proxyWebsockets = app.websockets;
             };
           }
-        ) privateApps;
+        ) privateApps
+        // lib.optionalAttrs hasPrivateApps {
+          # Reject unmatched Hosts instead of falling through to the first private vhost.
+          "_" = {
+            default = true;
+            forceSSL = true;
+            useACMEHost = cfg.private.domain;
+            listenAddresses = [ cfg.private.address ];
+            locations."/".extraConfig = "return 444;";
+          };
+        };
     };
 
     security.acme = {

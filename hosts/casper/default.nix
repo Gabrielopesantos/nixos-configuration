@@ -43,6 +43,8 @@
   # Enable hardware graphics acceleration.
   hardware.graphics.enable = true;
 
+  hardware.bluetooth.enable = true;
+
   services.pcscd.enable = true;
 
   virtualisation.containers.registries.search = [

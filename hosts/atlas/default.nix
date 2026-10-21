@@ -79,6 +79,18 @@
     ];
     services = [
       {
+        Apps = [
+          {
+            "Trek" = {
+              href = "https://trek.gabrielopesantos.com";
+              description = "Trip planner";
+              icon = "mdi-airplane";
+              siteMonitor = "http://127.0.0.1:3000";
+            };
+          }
+        ];
+      }
+      {
         Monitoring = [
           {
             "gabrielopesantos" = {
@@ -104,6 +116,69 @@
       subdomain = "home";
       port = 8082;
     };
+    apps.trek = {
+      subdomain = "trek";
+      port = 3000;
+      websockets = true;
+      public = true;
+    };
+  };
+
+  # TREK's README calls for a higher upload limit (backup/import uploads);
+  # the reverseProxy module only sets nginx's recommended defaults, so
+  # extend its generated vhost here.
+  services.nginx.virtualHosts."trek.gabrielopesantos.com".locations = {
+    "/".extraConfig = "client_max_body_size 500m;";
+    # MCP responses are Server-Sent Events: buffering must be off, and the
+    # stream outlives nginx's default 60s read timeout.
+    "/mcp" = {
+      proxyPass = "http://127.0.0.1:3000";
+      extraConfig = ''
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+      '';
+    };
+  };
+
+  virtualisation.podman.enable = true;
+  virtualisation.oci-containers.backend = "podman";
+
+  # podman does not auto-create missing bind-mount host dirs (unlike
+  # docker); without this the container fails with
+  # "Error: statfs /var/lib/trek/data: no such file or directory".
+  systemd.tmpfiles.rules = [
+    "d /var/lib/trek 0750 root root -"
+    "d /var/lib/trek/data 0750 root root -"
+    "d /var/lib/trek/uploads 0750 root root -"
+  ];
+
+  virtualisation.oci-containers.containers.trek = {
+    image = "mauriceboe/trek:4.3.3";
+    # loopback-only publish: podman can insert iptables rules that bypass
+    # the NixOS firewall, see modules/nixos/reverse-proxy.nix header.
+    ports = [ "127.0.0.1:3000:3000" ];
+    volumes = [
+      "/var/lib/trek/data:/app/data"
+      "/var/lib/trek/uploads:/app/uploads"
+    ];
+    # OAuth issuer for MCP; must be the public https origin.
+    environment.APP_URL = "https://trek.gabrielopesantos.com";
+    environmentFiles = [ config.sops.secrets.trek-env.path ];
+  };
+
+  # ENCRYPTION_KEY=<openssl rand -hex 32>
+  # MUST exist in secrets/secrets.yaml before this config is deployed.
+  sops.secrets.trek-env = { };
+
+  # healthchecks.io ping URL (no trailing /fail) for the backup heartbeat.
+  # MUST exist in secrets/secrets.yaml before this config is deployed.
+  sops.secrets.healthchecks-url = { };
+
+  services.backup = {
+    enable = true;
+    repository = "b2:santoslabs-atlas-backups:restic";
+    paths = [ "/var/lib/trek" ];
+    healthchecksUrlFile = config.sops.secrets.healthchecks-url.path;
   };
 
   # Serve the static website on the apex domain.

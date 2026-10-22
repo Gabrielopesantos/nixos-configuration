@@ -17,6 +17,8 @@
     enable = lib.mkDefault true;
     # Allow tailnet traffic in; the firewall stays closed otherwise.
     openFirewall = true;
+    # Do not upload client logs to Tailscale (--no-logs-no-support).
+    disableUpstreamLogging = true;
   }
   // lib.optionalAttrs ((config.sops.secrets or { }) ? tailscale-auth-key) {
     authKeyFile = config.sops.secrets.tailscale-auth-key.path;

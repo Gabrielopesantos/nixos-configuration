@@ -64,7 +64,7 @@ All apps behind one nginx (`reverse-proxy` module). Two classes:
   -> public IP, DNS-only (grey cloud); nginx gets its cert via ACME HTTP-01.
 - **Private** (default): `<subdomain>.atlas.gabrielopesantos.com`, covered by
   wildcard A record `*.atlas.gabrielopesantos.com` -> tailnet IP
-  (`100.83.163.93`). Name resolves publicly, routes only inside the tailnet;
+  (`<atlas tailnet IP>`). Name resolves publicly, routes only inside the tailnet;
   vhost binds the tailnet IP exclusively. One wildcard cert via DNS-01 with a
   Cloudflare API token, so private names never hit CT logs.
 
@@ -94,8 +94,7 @@ sudo restic-state restore latest --target /tmp/restore
 
 `system.autoUpgrade` pulls `github:gabrielopesantos/nixos-configuration`
 daily ~04:00, rebuilds; reboots only inside 04:00-06:00. Inputs move only
-when `flake.lock` changes on main (weekly `update-flake-lock` PR, merged by
-hand = human gate). Failed build leaves running system untouched.
+when `flake.lock` changes on main (weekly `update-flake-lock` PR, merging it by hand). Failed build leaves running system untouched.
 
 ## One-time setup checklist (secrets & external services)
 
@@ -105,15 +104,15 @@ Add via `nix develop -c sops secrets/secrets.yaml` (YubiKey inserted):
    dashboard, **Zone -> DNS -> Edit** on `gabrielopesantos.com` only.
 2. `restic-password` - generate once (`openssl rand -base64 32`), keep a
    copy outside the repo too; losing it loses the backups.
-3. `restic-env` - `B2_ACCOUNT_ID=<keyID>` + `B2_ACCOUNT_KEY=<applicationKey>`,
-   from a Backblaze key scoped to `atlas-backups` (private bucket).
-4. `healthchecks-url` - ping URL from a healthchecks.io check, period 1 day.
-   Only needed once `services.backup` is re-enabled.
+3. `restic-env` - env file with the storage backend's credentials, from a key
+   scoped to the backup bucket only (private bucket).
+4. `restic-repository` - restic repository URL for that backend.
+5. `healthchecks-url` - ping URL from a healthchecks.io check, period 1 day.
 
 External, outside the repo:
 
 1. Cloudflare DNS: wildcard A record `*.atlas.gabrielopesantos.com` ->
-   `100.83.163.93` (grey cloud).
+   `<atlas tailnet IP>` (grey cloud).
 2. After first deploy, verify SSH still works over the tailnet from a new
    terminal before closing the deploying session.
 

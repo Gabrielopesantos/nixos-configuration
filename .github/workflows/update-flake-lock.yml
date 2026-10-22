@@ -1,6 +1,6 @@
-# Weekly flake.lock bump as a PR. Merging it is the human gate for updates:
-# atlas auto-upgrades from main daily (system.autoUpgrade), so security
-# patches reach it one merge after this PR opens.
+# Weekly flake.lock bump as a PR. Merging it by hand is the human gate for
+# updates: atlas auto-upgrades from main daily (system.autoUpgrade), so
+# security patches reach it one merge after this PR opens. Do not auto-merge.
 name: update-flake-lock
 
 on:
@@ -16,15 +16,10 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v16
-      - uses: DeterminateSystems/update-flake-lock@v24
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@e50d5f73bfe71c2dd0aa4218de8f4afa59f8f81d # v16
+      - uses: DeterminateSystems/update-flake-lock@a2bbe0274e3a0c4194390a1e445f734c597ebc37 # v24
         id: update
         with:
           pr-title: "flake.lock: weekly update"
           pr-labels: dependencies
-      - name: Enable auto-merge
-        if: steps.update.outputs.pull-request-number
-        run: gh pr merge --auto --squash --delete-branch "${{ steps.update.outputs.pull-request-number }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

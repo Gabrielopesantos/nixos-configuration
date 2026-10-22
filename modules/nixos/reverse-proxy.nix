@@ -137,6 +137,19 @@ in
       recommendedProxySettings = true;
       recommendedTlsSettings = true;
 
+      # Log only what operations need: client IP truncated (IPv4 /24, IPv6
+      # first 3 groups), path without query string (may carry tokens), no
+      # user agent or referer. Replaces nginx's default "combined" access log.
+      commonHttpConfig = ''
+        map $remote_addr $remote_addr_anon {
+          ~^(?P<ip>\d+\.\d+\.\d+)\.\d+$ $ip.0;
+          ~^(?P<ip>[^:]*:[^:]*:[^:]*): $ip::;
+          default 0.0.0.0;
+        }
+        log_format anon '$remote_addr_anon [$time_local] "$request_method $uri $server_protocol" $status $body_bytes_sent';
+        access_log /var/log/nginx/access.log anon;
+      '';
+
       virtualHosts =
         lib.mapAttrs' (
           _: app:
@@ -171,6 +184,12 @@ in
             locations."/".extraConfig = "return 444;";
           };
         };
+    };
+
+    # Keep two weeks of access logs (nixpkgs default: 26 weekly files).
+    services.logrotate.settings.nginx = {
+      frequency = "daily";
+      rotate = 14;
     };
 
     security.acme = {

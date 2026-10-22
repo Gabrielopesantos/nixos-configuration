@@ -12,18 +12,17 @@
 #
 #   services.backup = {
 #     enable = true;
-#     repository = "b2:my-bucket:restic";
 #     paths = [ "/var/lib/myapp" ];
 #     # sops key whose content is the healthchecks.io ping URL; null disables
 #     healthchecksUrlFile = config.sops.secrets.healthchecks-url.path;
 #   };
 #
 # Secrets (sops keys the host must provide):
+#   restic-repository restic repository URL for any restic backend; kept in
+#                     sops so the public repo does not name the storage
 #   restic-password   password for the restic repository (generate once, e.g.
 #                     `openssl rand -base64 32`; losing it = losing backups)
-#   restic-env        env file with backend credentials, e.g. for B2:
-#                       B2_ACCOUNT_ID=<keyID>
-#                       B2_ACCOUNT_KEY=<applicationKey>
+#   restic-env        env file with the credentials that backend reads
 {
   config,
   lib,
@@ -36,12 +35,6 @@ in
 {
   options.services.backup = {
     enable = lib.mkEnableOption "restic backups of app state directories";
-
-    repository = lib.mkOption {
-      type = lib.types.str;
-      description = "restic repository URL (credentials come from the restic-env secret).";
-      example = "b2:my-bucket:restic";
-    };
 
     paths = lib.mkOption {
       type = lib.types.listOf lib.types.str;
@@ -57,11 +50,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    sops.secrets.restic-repository = { };
     sops.secrets.restic-password = { };
     sops.secrets.restic-env = { };
 
     services.restic.backups.state = {
-      repository = cfg.repository;
+      repositoryFile = config.sops.secrets.restic-repository.path;
       passwordFile = config.sops.secrets.restic-password.path;
       environmentFile = config.sops.secrets.restic-env.path;
       initialize = true; # create the repo on first run

@@ -176,7 +176,6 @@
 
   services.backup = {
     enable = true;
-    repository = "b2:santoslabs-atlas-backups:restic";
     paths = [ "/var/lib/trek" ];
     healthchecksUrlFile = config.sops.secrets.healthchecks-url.path;
   };

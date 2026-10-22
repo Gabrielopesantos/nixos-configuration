@@ -76,15 +76,14 @@ Tailnet-only: `tailscale0` trusted, port 22 closed publicly
 ## Backups
 
 `backup` module (`modules/nixos/backup.nix`, opt-in per host): nightly restic
-to Backblaze B2 (bucket `atlas-backups`), encrypted, pruned
-(7 daily/4 weekly/6 monthly), `restic check` after each run, heartbeat to
-healthchecks.io.
+to private object storage, encrypted, pruned (7 daily/4 weekly/6 monthly),
+`restic check` after each run, heartbeat to healthchecks.io. Repository URL
+and credentials live in sops (`restic-repository`, `restic-env`), not in the
+repo.
 
-Disabled on atlas: no app state worth backing up. Re-enable
-`services.backup` (see module header) with `paths` listing each app's state
-dir once one needs it.
+Add each new app's state dir to `services.backup.paths`.
 
-Restore drill (while enabled):
+Restore drill:
 
 ```sh
 sudo restic-state snapshots       # wrapper with env/repo/password preset

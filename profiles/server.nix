@@ -19,6 +19,12 @@
   # Reasonable headless default.
   services.qemuGuest.enable = lib.mkDefault true;
 
+  # Bound the journal (also holds container logs via the journald log driver).
+  services.journald.extraConfig = lib.mkDefault ''
+    SystemMaxUse=500M
+    MaxRetentionSec=14day
+  '';
+
   services.fail2ban = {
     enable = lib.mkDefault true;
     maxretry = lib.mkDefault 5;

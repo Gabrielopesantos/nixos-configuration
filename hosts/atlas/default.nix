@@ -153,7 +153,7 @@
   ];
 
   virtualisation.oci-containers.containers.trek = {
-    image = "mauriceboe/trek:4.3.3";
+    image = "mauriceboe/trek:5.1.0";
     # loopback-only publish: podman can insert iptables rules that bypass
     # the NixOS firewall, see modules/nixos/reverse-proxy.nix header.
     ports = [ "127.0.0.1:3000:3000" ];
